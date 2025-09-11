@@ -70,7 +70,9 @@ robust_huber_moderated <- function(counts, group, c_huber = 1.345, robust_prior 
     v_diff[g] <- (estx$sigma^2) / n1 + (esty$sigma^2) / n2
   }
   # squeezeVar espera vector df por gen
-  df_per_gene <- rep(n1 + n2 - 2, G)
+    num_df <- (var_x/n1 + var_y/n2)^2
+  den_df <- (var_x/n1)^2/(n1-1) + (var_y/n2)^2/(n2-1)
+  df_per_gene <- rep(num_df/den_df, G)
   squeezed <- limma::squeezeVar(var = v_diff, df = df_per_gene, robust = robust_prior)
   df_total <- df_per_gene + squeezed$df.prior
   t_mod <- mu_diff / sqrt(squeezed$var.post)
