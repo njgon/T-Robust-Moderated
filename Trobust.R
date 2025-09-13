@@ -59,21 +59,36 @@ robust_huber_moderated <- function(counts, group, c_huber = 1.345, robust_prior 
   G <- nrow(counts)
   n1 <- sum(group == levels(group)[1])
   n2 <- sum(group == levels(group)[2])
+  
   mu_diff <- numeric(G)
   v_diff <- numeric(G)
+  df_per_gene <- numeric(G)
+  
   for (g in seq_len(G)) {
-    x <- log2(counts[g, group==levels(group)[1]] + 1)
-    y <- log2(counts[g, group==levels(group)[2]] + 1)
-    estx <- huber_estimation_safe(x, c = c_huber)
-    esty <- huber_estimation_safe(y, c = c_huber)
+    x <- log2(counts[g, group == levels(group)[1]] + 1)
+    y <- log2(counts[g, group == levels(group)[2]] + 1)
+    
+    estx <- huber_estimation(x, c = c_huber)
+    esty <- huber_estimation(y, c = c_huber)
+    
     mu_diff[g] <- esty$mu - estx$mu
-    v_diff[g] <- (estx$sigma^2) / n1 + (esty$sigma^2) / n2
+    
+    var_x <- estx$sigma^2
+    var_y <- esty$sigma^2
+    
+    v_diff[g] <- var_x/n1 + var_y/n2
+
+    num_df <- (var_x/n1 + var_y/n2)^2
+    den_df <- (var_x/n1)^2/(n1 - 1) + (var_y/n2)^2/(n2 - 1)
+    df_per_gene[g] <- num_df / den_df
   }
-  # squeezeVar espera vector df por gen
-  df_per_gene <- rep((n1+n2-2), G)
+  
   squeezed <- limma::squeezeVar(var = v_diff, df = df_per_gene, robust = robust_prior)
   df_total <- df_per_gene + squeezed$df.prior
+  
   t_mod <- mu_diff / sqrt(squeezed$var.post)
+  
   pvals <- 2 * pt(-abs(t_mod), df = df_total)
-  pvals
+  
+  return(pvals)
 }
